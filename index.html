@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NABZ Workout Tracker</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NABZ Tracker">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="NABZ Tracker">
+    <meta name="description" content="NABZ Workout & Weight Tracker">
+    
+    <!-- App Icons -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%230a0a0f' width='512' height='512' rx='90'/><text x='256' y='320' font-size='280' text-anchor='middle' fill='%2300f0ff'>🏋️</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%230a0a0f' width='512' height='512' rx='90'/><text x='256' y='320' font-size='280' text-anchor='middle' fill='%2300f0ff'>🏋️</text></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'display': ['Bebas Neue', 'sans-serif'],
+                        'body': ['Barlow', 'sans-serif'],
+                    },
+                    colors: {
+                        'dark': {
+                            900: '#0a0a0f',
+                            800: '#12121a',
+                            700: '#1a1a25',
+                            600: '#252535',
+                        },
+                        'electric': '#00f0ff',
+                        'lime': '#c4ff00',
+                        'hot': '#ff3366',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            overscroll-behavior: none;
+        }
+        body {
+            font-family: 'Barlow', sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+        }
+        .font-display {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.05em;
+        }
+        .glow-electric {
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3), 0 0 40px rgba(0, 240, 255, 0.1);
+        }
+        .glow-lime {
+            box-shadow: 0 0 20px rgba(196, 255, 0, 0.3), 0 0 40px rgba(196, 255, 0, 0.1);
+        }
+        .glow-hot {
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.3), 0 0 40px rgba(255, 51, 102, 0.1);
+        }
+        .card {
+            background: linear-gradient(180deg, rgba(26, 26, 37, 0.9) 0%, rgba(18, 18, 26, 0.95) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00f0ff 0%, #00c4cc 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover, .btn-primary:active {
+            transform: scale(0.98);
+            box-shadow: 0 8px 25px rgba(0, 240, 255, 0.4);
+        }
+        .btn-lime {
+            background: linear-gradient(135deg, #c4ff00 0%, #9acc00 100%);
+            color: #0a0a0f;
+        }
+        .btn-lime:hover, .btn-lime:active {
+            box-shadow: 0 8px 25px rgba(196, 255, 0, 0.4);
+        }
+        .btn-hot {
+            background: linear-gradient(135deg, #ff3366 0%, #cc2952 100%);
+        }
+        .btn-hot:hover, .btn-hot:active {
+            box-shadow: 0 8px 25px rgba(255, 51, 102, 0.4);
+        }
+        .timer-ring {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear;
+        }
+        .input-dark {
+            background: rgba(10, 10, 15, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-dark:focus {
+            border-color: #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            outline: none;
+        }
+        .tab-active {
+            background: linear-gradient(135deg, #00f0ff 0%, #00c4cc 100%);
+            color: #0a0a0f;
+        }
+        .exercise-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .exercise-card:hover, .exercise-card:active {
+            transform: translateY(-2px);
+            border-color: rgba(0, 240, 255, 0.5);
+        }
+        .exercise-card.selected {
+            border-color: #c4ff00;
+            background: rgba(196, 255, 0, 0.1);
+        }
+        .set-row {
+            transition: all 0.3s ease;
+        }
+        .set-row.completed {
+            background: rgba(196, 255, 0, 0.1);
+            border-left: 3px solid #c4ff00;
+        }
+        .set-row.high-point {
+            background: rgba(255, 51, 102, 0.1);
+            border-left: 3px solid #ff3366;
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #12121a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #252535;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
+        }
+        /* Safe area padding for notched phones */
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        .safe-top {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+        /* Install prompt */
+        .install-prompt {
+            animation: slideUp 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="text-white overflow-x-hidden safe-top">
+    <!-- Install Prompt Banner -->
+    <div id="installPrompt" class="fixed bottom-0 left-0 right-0 z-40 hidden install-prompt safe-bottom">
+        <div class="bg-dark-700 border-t border-electric/30 p-4 mx-2 mb-2 rounded-2xl flex items-center gap-4">
+            <div class="text-3xl">📲</div>
+            <div class="flex-1">
+                <div class="font-semibold text-electric">Install App</div>
+                <div class="text-xs text-gray-400">Add to home screen for the best experience</div>
+            </div>
+            <button onclick="installApp()" class="btn-primary px-4 py-2 rounded-lg font-bold text-sm text-dark-900">Install</button>
+            <button onclick="dismissInstall()" class="text-gray-500 text-xl">&times;</button>
+        </div>
+    </div>
+
+    <!-- Weight Modal -->
+    <div id="weightModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="card rounded-2xl p-8 mx-4 max-w-md w-full slide-up">
+            <div class="text-center mb-6">
+                <div class="text-5xl mb-4">☀️</div>
+                <h2 class="font-display text-3xl text-electric mb-2">Good Morning!</h2>
+                <p class="text-gray-400">Please enter your weight today</p>
+            </div>
+            <div class="mb-6">
+                <div class="flex items-center gap-3">
+                    <input type="number" id="weightInput" step="0.1" placeholder="Enter weight" inputmode="decimal"
+                        class="input-dark w-full px-5 py-4 rounded-xl text-xl font-semibold text-center">
+                    <select id="weightUnit" class="input-dark px-4 py-4 rounded-xl text-lg">
+                        <option value="lbs">lbs</option>
+                        <option value="kg">kg</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="saveWeight()" 
+                class="btn-lime w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider active:scale-95 transition-transform">
+                Save Weight
+            </button>
+            <button onclick="skipWeight()" 
+                class="w-full py-3 mt-3 rounded-xl font-medium text-gray-500 hover:text-gray-300 transition-colors">
+                Skip for now
+            </button>
+        </div>
+    </div>
+
+    <!-- Rest Timer Modal -->
+    <div id="timerModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="card rounded-2xl p-8 mx-4 max-w-sm w-full text-center slide-up">
+            <h2 class="font-display text-2xl text-gray-400 mb-4">REST TIME</h2>
+            <div class="relative w-48 h-48 mx-auto mb-6">
+                <svg class="w-full h-full transform -rotate-90">
+                    <circle cx="96" cy="96" r="88" stroke="#252535" stroke-width="8" fill="none"/>
+                    <circle id="timerRing" cx="96" cy="96" r="88" stroke="#00f0ff" stroke-width="8" 
+                        fill="none" class="timer-ring"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span id="timerDisplay" class="font-display text-6xl text-electric">60</span>
+                </div>
+            </div>
+            <button onclick="skipTimer()" 
+                class="btn-hot px-8 py-4 rounded-xl font-bold uppercase tracking-wider text-lg active:scale-95 transition-transform">
+                Skip Rest
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="container mx-auto px-4 py-6 max-w-4xl safe-bottom">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="font-display text-4xl md:text-6xl text-white mb-1">
+                NABZ <span class="text-electric">WORKOUT</span> TRACKER
+            </h1>
+            <p class="text-gray-500 uppercase tracking-widest text-xs">Train Hard. Track Progress.</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex gap-2 mb-6 overflow-x-auto pb-2">
+            <button onclick="showTab('workout')" id="tab-workout" 
+                class="tab-active px-5 py-3 rounded-xl font-bold uppercase tracking-wider whitespace-nowrap flex-1 min-w-[100px] text-sm active:scale-95 transition-transform">
+                🏋️ Workout
+            </button>
+            <button onclick="showTab('progress')" id="tab-progress" 
+                class="bg-dark-700 px-5 py-3 rounded-xl font-bold uppercase tracking-wider whitespace-nowrap flex-1 min-w-[100px] text-sm active:scale-95 transition-transform">
+                📊 Progress
+            </button>
+            <button onclick="showTab('history')" id="tab-history" 
+                class="bg-dark-700 px-5 py-3 rounded-xl font-bold uppercase tracking-wider whitespace-nowrap flex-1 min-w-[100px] text-sm active:scale-95 transition-transform">
+                📜 History
+            </button>
+        </nav>
+
+        <!-- Workout Tab -->
+        <div id="workoutTab" class="space-y-5">
+            <!-- Muscle Group Selection -->
+            <div class="card rounded-2xl p-5">
+                <h2 class="font-display text-xl text-electric mb-4">SELECT MUSCLE GROUP</h2>
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="selectMuscle('chest')" data-muscle="chest"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">💪</div>
+                        <div class="text-xs uppercase">Chest</div>
+                    </button>
+                    <button onclick="selectMuscle('shoulders')" data-muscle="shoulders"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">🎯</div>
+                        <div class="text-xs uppercase">Shoulders</div>
+                    </button>
+                    <button onclick="selectMuscle('back')" data-muscle="back"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">🔙</div>
+                        <div class="text-xs uppercase">Back</div>
+                    </button>
+                    <button onclick="selectMuscle('triceps')" data-muscle="triceps"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">💎</div>
+                        <div class="text-xs uppercase">Triceps</div>
+                    </button>
+                    <button onclick="selectMuscle('biceps')" data-muscle="biceps"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">💪</div>
+                        <div class="text-xs uppercase">Biceps</div>
+                    </button>
+                    <button onclick="selectMuscle('quads')" data-muscle="quads"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">🦵</div>
+                        <div class="text-xs uppercase">Quads</div>
+                    </button>
+                    <button onclick="selectMuscle('hamstrings')" data-muscle="hamstrings"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">🦿</div>
+                        <div class="text-xs uppercase">Hams</div>
+                    </button>
+                    <button onclick="selectMuscle('calves')" data-muscle="calves"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">🦶</div>
+                        <div class="text-xs uppercase">Calves</div>
+                    </button>
+                    <button onclick="selectMuscle('abs')" data-muscle="abs"
+                        class="muscle-btn bg-dark-600 p-4 rounded-xl font-semibold active:scale-95 transition-all">
+                        <div class="text-2xl mb-1">🎽</div>
+                        <div class="text-xs uppercase">Abs</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Exercise Selection -->
+            <div id="exerciseSelection" class="card rounded-2xl p-5 hidden">
+                <h2 class="font-display text-xl text-electric mb-1">SELECT EXERCISES</h2>
+                <p class="text-gray-400 text-sm mb-4">Tap to select: <span class="text-electric">Main</span> (Sets 1-5) then <span class="text-hot">Finisher</span> (Set 6)</p>
+                <div id="exerciseList" class="grid grid-cols-1 gap-3 mb-4"></div>
+                <button onclick="startWorkout()" id="startWorkoutBtn" 
+                    class="btn-lime w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider hidden active:scale-95 transition-transform">
+                    🚀 Start Workout
+                </button>
+            </div>
+
+            <!-- Active Workout -->
+            <div id="activeWorkout" class="card rounded-2xl p-5 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-display text-xl text-lime">ACTIVE WORKOUT</h2>
+                    <button onclick="finishWorkout()" class="btn-hot px-4 py-2 rounded-lg text-sm font-bold uppercase active:scale-95 transition-transform">
+                        Finish
+                    </button>
+                </div>
+                <div id="workoutSets" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Progress Tab -->
+        <div id="progressTab" class="hidden space-y-5">
+            <div class="card rounded-2xl p-5">
+                <h2 class="font-display text-xl text-electric mb-4">WEIGHT OVER TIME</h2>
+                <div class="h-56 md:h-72">
+                    <canvas id="weightChart"></canvas>
+                </div>
+            </div>
+            <div class="card rounded-2xl p-5">
+                <h2 class="font-display text-xl text-electric mb-4">STATISTICS</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-dark-600 rounded-xl p-4 text-center">
+                        <div class="text-gray-400 text-xs uppercase mb-1">Current</div>
+                        <div id="statCurrent" class="font-display text-2xl text-white">--</div>
+                    </div>
+                    <div class="bg-dark-600 rounded-xl p-4 text-center">
+                        <div class="text-gray-400 text-xs uppercase mb-1">Starting</div>
+                        <div id="statStarting" class="font-display text-2xl text-white">--</div>
+                    </div>
+                    <div class="bg-dark-600 rounded-xl p-4 text-center">
+                        <div class="text-gray-400 text-xs uppercase mb-1">Change</div>
+                        <div id="statChange" class="font-display text-2xl text-lime">--</div>
+                    </div>
+                    <div class="bg-dark-600 rounded-xl p-4 text-center">
+                        <div class="text-gray-400 text-xs uppercase mb-1">Workouts</div>
+                        <div id="statWorkouts" class="font-display text-2xl text-electric">--</div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="manualWeightEntry()" 
+                class="btn-primary w-full py-4 rounded-xl font-bold text-lg uppercase tracking-wider text-dark-900 active:scale-95 transition-transform">
+                + Log Weight Manually
+            </button>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="hidden space-y-5">
+            <div class="card rounded-2xl p-5">
+                <h2 class="font-display text-xl text-electric mb-4">WORKOUT HISTORY</h2>
+                <div id="workoutHistory" class="space-y-3 max-h-80 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-8">No workouts recorded yet</p>
+                </div>
+            </div>
+            <div class="card rounded-2xl p-5">
+                <h2 class="font-display text-xl text-electric mb-4">WEIGHT LOG</h2>
+                <div id="weightHistory" class="space-y-2 max-h-64 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-8">No weight entries yet</p>
+                </div>
+            </div>
+            <button onclick="clearAllData()" 
+                class="bg-dark-700 w-full py-3 rounded-xl font-bold uppercase tracking-wider text-gray-400 hover:text-hot transition-colors active:scale-95">
+                Clear All Data
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== PWA SETUP ====================
+        
+        // Web App Manifest (inline)
+        const manifest = {
+            name: "NABZ Workout Tracker",
+            short_name: "NABZ Tracker",
+            description: "High Point Workout & Weight Tracker",
+            start_url: "./",
+            display: "standalone",
+            background_color: "#0a0a0f",
+            theme_color: "#0a0a0f",
+            orientation: "portrait",
+            icons: [
+                {
+                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%230a0a0f' width='512' height='512' rx='90'/><text x='256' y='340' font-size='280' text-anchor='middle'>🏋️</text></svg>",
+                    sizes: "512x512",
+                    type: "image/svg+xml",
+                    purpose: "any maskable"
+                }
+            ]
+        };
+        
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = manifestURL;
+        document.head.appendChild(manifestLink);
+
+        // Service Worker (inline)
+        const swCode = `
+            const CACHE_NAME = 'bfl-tracker-v1';
+            const ASSETS = [
+                './',
+                'https://cdn.tailwindcss.com',
+                'https://cdn.jsdelivr.net/npm/chart.js',
+                'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap'
+            ];
+            
+            self.addEventListener('install', e => {
+                e.waitUntil(
+                    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+                );
+                self.skipWaiting();
+            });
+            
+            self.addEventListener('activate', e => {
+                e.waitUntil(
+                    caches.keys().then(keys => 
+                        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+                    )
+                );
+                self.clients.claim();
+            });
+            
+            self.addEventListener('fetch', e => {
+                e.respondWith(
+                    caches.match(e.request).then(cached => cached || fetch(e.request))
+                );
+            });
+        `;
+        
+        if ('serviceWorker' in navigator) {
+            const swBlob = new Blob([swCode], {type: 'application/javascript'});
+            const swURL = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swURL).catch(() => {});
+        }
+
+        // Install prompt handling
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (!localStorage.getItem('installDismissed')) {
+                document.getElementById('installPrompt').classList.remove('hidden');
+            }
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    deferredPrompt = null;
+                    document.getElementById('installPrompt').classList.add('hidden');
+                });
+            }
+        }
+
+        function dismissInstall() {
+            document.getElementById('installPrompt').classList.add('hidden');
+            localStorage.setItem('installDismissed', 'true');
+        }
+
+        // ==================== APP CODE ====================
+
+        // Exercise Database
+        const exercises = {
+            chest: ['Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Flyes', 'Barbell Bench Press'],
+            shoulders: ['Seated Dumbbell Press', 'Standing Barbell Press', 'Side Raises', 'Bent-Over Raises'],
+            back: ['Wide-Grip Pulldowns', 'One-Arm Dumbbell Rows', 'Reverse-Grip Pulldowns', 'Dumbbell Pullovers'],
+            triceps: ['Dumbbell Extensions', 'Close-Grip Pushdowns', 'Bench Dips', 'Lying Dumbbell Extensions'],
+            biceps: ['Incline Dumbbell Curls', 'Seated Dumbbell Curls', 'Standing Barbell Curls', 'Hammer Curls'],
+            quads: ['Leg Extensions', 'Leg Press', 'Barbell Squats', 'Dumbbell Squats'],
+            hamstrings: ['Dumbbell Lunges', 'Standing Leg Curls', 'Lying Leg Curls', 'Straight-Leg Deadlifts'],
+            calves: ['Seated Calf Raises', 'Standing Calf Raises', 'One-Leg Calf Raises', 'Angled Calf Raises'],
+            abs: ['Floor Crunches', 'Twist Crunches', 'Decline Sit-Ups', 'Bent-Knee Leg Raises']
+        };
+
+        // High Point Set Structure
+        const setStructure = [
+            { set: 1, reps: 12, level: 5, label: 'Warm-up' },
+            { set: 2, reps: 10, level: 6, label: '' },
+            { set: 3, reps: 8, level: 7, label: '' },
+            { set: 4, reps: 6, level: 10, label: 'High Point', isHighPoint: true },
+            { set: 5, reps: 12, level: 6, label: 'Finisher', isFinisher: true }
+        ];
+
+        // State
+        let currentMuscle = null;
+        let selectedMainExercise = null;
+        let selectedFinisherExercise = null;
+        let timerInterval = null;
+        let weightChart = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkDailyWeight();
+            initChart();
+            loadStats();
+            loadHistory();
+        });
+
+        // Check if weight logged today
+        function checkDailyWeight() {
+            const weightLog = JSON.parse(localStorage.getItem('weightLog') || '[]');
+            const today = new Date().toDateString();
+            const todayEntry = weightLog.find(entry => new Date(entry.date).toDateString() === today);
+            
+            if (!todayEntry) {
+                document.getElementById('weightModal').classList.remove('hidden');
+            }
+        }
+
+        // Save weight
+        function saveWeight() {
+            const weight = parseFloat(document.getElementById('weightInput').value);
+            const unit = document.getElementById('weightUnit').value;
+            
+            if (!weight || weight <= 0) {
+                alert('Please enter a valid weight');
+                return;
+            }
+
+            const weightLog = JSON.parse(localStorage.getItem('weightLog') || '[]');
+            weightLog.push({
+                date: new Date().toISOString(),
+                weight: weight,
+                unit: unit
+            });
+            localStorage.setItem('weightLog', JSON.stringify(weightLog));
+            
+            document.getElementById('weightModal').classList.add('hidden');
+            document.getElementById('weightInput').value = '';
+            updateChart();
+            loadStats();
+            loadHistory();
+        }
+
+        // Skip weight entry
+        function skipWeight() {
+            document.getElementById('weightModal').classList.add('hidden');
+        }
+
+        // Manual weight entry
+        function manualWeightEntry() {
+            document.getElementById('weightModal').classList.remove('hidden');
+        }
+
+        // Tab navigation
+        function showTab(tab) {
+            document.querySelectorAll('[id$="Tab"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('bg-dark-700');
+            });
+            
+            document.getElementById(tab + 'Tab').classList.remove('hidden');
+            const activeTab = document.getElementById('tab-' + tab);
+            activeTab.classList.add('tab-active');
+            activeTab.classList.remove('bg-dark-700');
+
+            if (tab === 'progress') {
+                setTimeout(updateChart, 100);
+            }
+        }
+
+        // Select muscle group
+        function selectMuscle(muscle) {
+            currentMuscle = muscle;
+            selectedMainExercise = null;
+            selectedFinisherExercise = null;
+
+            document.querySelectorAll('.muscle-btn').forEach(btn => {
+                btn.classList.remove('glow-electric', 'border-2', 'border-electric');
+            });
+            document.querySelector(`[data-muscle="${muscle}"]`).classList.add('glow-electric', 'border-2', 'border-electric');
+
+            const exerciseList = document.getElementById('exerciseList');
+            exerciseList.innerHTML = exercises[muscle].map((ex, idx) => `
+                <div class="exercise-card bg-dark-600 p-4 rounded-xl border-2 border-transparent active:scale-98" 
+                    data-exercise="${ex}" data-index="${idx}" onclick="toggleExercise('${ex}')">
+                    <div class="font-semibold">${ex}</div>
+                    <div class="text-xs mt-1">
+                        <span class="main-label hidden text-electric font-bold">✓ Main Exercise (Sets 1-5)</span>
+                        <span class="finisher-label hidden text-hot font-bold">✓ Finisher (Set 6)</span>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('exerciseSelection').classList.remove('hidden');
+            document.getElementById('startWorkoutBtn').classList.add('hidden');
+        }
+
+        // Toggle exercise selection
+        function toggleExercise(exercise) {
+            const card = document.querySelector(`[data-exercise="${exercise}"]`);
+            
+            if (selectedMainExercise === exercise) {
+                selectedMainExercise = null;
+                card.classList.remove('selected');
+                card.querySelector('.main-label').classList.add('hidden');
+            } else if (selectedFinisherExercise === exercise) {
+                selectedFinisherExercise = null;
+                card.classList.remove('selected');
+                card.querySelector('.finisher-label').classList.add('hidden');
+            } else if (!selectedMainExercise) {
+                selectedMainExercise = exercise;
+                card.classList.add('selected');
+                card.querySelector('.main-label').classList.remove('hidden');
+            } else if (!selectedFinisherExercise) {
+                selectedFinisherExercise = exercise;
+                card.classList.add('selected');
+                card.querySelector('.finisher-label').classList.remove('hidden');
+            }
+
+            if (selectedMainExercise && selectedFinisherExercise) {
+                document.getElementById('startWorkoutBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('startWorkoutBtn').classList.add('hidden');
+            }
+        }
+
+        // Start workout
+        function startWorkout() {
+            const workoutSets = document.getElementById('workoutSets');
+            workoutSets.innerHTML = setStructure.map((s, idx) => {
+                const exercise = s.isFinisher ? selectedFinisherExercise : selectedMainExercise;
+                return `
+                <div class="set-row bg-dark-600 rounded-xl p-4 ${s.isHighPoint ? 'high-point' : ''}" data-set="${idx}">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <span class="font-display text-xl text-white">SET ${s.set}</span>
+                            ${s.label ? `<span class="ml-2 text-xs px-2 py-1 rounded ${s.isHighPoint ? 'bg-hot/20 text-hot' : s.isFinisher ? 'bg-lime/20 text-lime' : 'bg-gray-700 text-gray-400'}">${s.label}</span>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-gray-400 truncate max-w-[140px]">${exercise}</div>
+                            <div class="text-xs text-gray-500">Level ${s.level} • ${s.reps} reps</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" placeholder="Weight" inputmode="decimal"
+                            class="input-dark flex-1 px-3 py-3 rounded-lg text-center text-lg font-semibold"
+                            data-set-weight="${idx}">
+                        <button onclick="completeSet(${idx})" data-complete="${idx}"
+                            class="btn-primary px-5 py-3 rounded-lg font-bold uppercase text-dark-900 active:scale-95 transition-transform">
+                            Done
+                        </button>
+                        ${idx < 4 ? `
+                        <button onclick="startRest()" 
+                            class="bg-dark-700 px-3 py-3 rounded-lg font-bold text-electric border border-electric/30 active:bg-electric/10 transition-all">
+                            ⏱️
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            document.getElementById('exerciseSelection').classList.add('hidden');
+            document.getElementById('activeWorkout').classList.remove('hidden');
+        }
+
+        // Complete set
+        function completeSet(setIndex) {
+            const row = document.querySelector(`[data-set="${setIndex}"]`);
+            const btn = document.querySelector(`[data-complete="${setIndex}"]`);
+            
+            row.classList.add('completed');
+            btn.textContent = '✓';
+            btn.disabled = true;
+            btn.classList.remove('btn-primary');
+            btn.classList.add('bg-lime/20', 'text-lime', 'cursor-default');
+            
+            // Vibrate on completion
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+            }
+        }
+
+        // Rest timer
+        function startRest() {
+            document.getElementById('timerModal').classList.remove('hidden');
+            let seconds = 60;
+            const display = document.getElementById('timerDisplay');
+            const ring = document.getElementById('timerRing');
+            const circumference = 2 * Math.PI * 88;
+            
+            ring.style.strokeDasharray = circumference;
+            ring.style.strokeDashoffset = 0;
+
+            timerInterval = setInterval(() => {
+                seconds--;
+                display.textContent = seconds;
+                ring.style.strokeDashoffset = circumference * (1 - seconds / 60);
+
+                if (seconds <= 0) {
+                    skipTimer();
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate([200, 100, 200, 100, 200]);
+                    }
+                }
+            }, 1000);
+        }
+
+        function skipTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('timerModal').classList.add('hidden');
+            document.getElementById('timerDisplay').textContent = '60';
+            document.getElementById('timerRing').style.strokeDashoffset = 0;
+        }
+
+        // Finish workout
+        function finishWorkout() {
+            const sets = [];
+            setStructure.forEach((s, idx) => {
+                const weight = document.querySelector(`[data-set-weight="${idx}"]`).value;
+                const completed = document.querySelector(`[data-set="${idx}"]`).classList.contains('completed');
+                sets.push({
+                    ...s,
+                    exercise: s.isFinisher ? selectedFinisherExercise : selectedMainExercise,
+                    weight: weight || 0,
+                    completed
+                });
+            });
+
+            const workoutLog = JSON.parse(localStorage.getItem('workoutLog') || '[]');
+            workoutLog.push({
+                date: new Date().toISOString(),
+                muscle: currentMuscle,
+                mainExercise: selectedMainExercise,
+                finisherExercise: selectedFinisherExercise,
+                sets
+            });
+            localStorage.setItem('workoutLog', JSON.stringify(workoutLog));
+
+            // Reset
+            document.getElementById('activeWorkout').classList.add('hidden');
+            document.getElementById('exerciseSelection').classList.add('hidden');
+            document.querySelectorAll('.muscle-btn').forEach(btn => {
+                btn.classList.remove('glow-electric', 'border-2', 'border-electric');
+            });
+            currentMuscle = null;
+            selectedMainExercise = null;
+            selectedFinisherExercise = null;
+
+            loadStats();
+            loadHistory();
+            
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100, 50, 200]);
+            }
+            alert('Workout saved! Great job! 💪');
+        }
+
+        // Chart initialization
+        function initChart() {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            weightChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Weight',
+                        data: [],
+                        borderColor: '#00f0ff',
+                        backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#00f0ff',
+                        pointBorderColor: '#0a0a0f',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#666',
+                                maxRotation: 45
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#666'
+                            }
+                        }
+                    }
+                }
+            });
+            updateChart();
+        }
+
+        // Update chart
+        function updateChart() {
+            const weightLog = JSON.parse(localStorage.getItem('weightLog') || '[]');
+            const labels = weightLog.map(entry => {
+                const date = new Date(entry.date);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            });
+            const data = weightLog.map(entry => entry.weight);
+
+            if (weightChart) {
+                weightChart.data.labels = labels;
+                weightChart.data.datasets[0].data = data;
+                weightChart.update();
+            }
+        }
+
+        // Load statistics
+        function loadStats() {
+            const weightLog = JSON.parse(localStorage.getItem('weightLog') || '[]');
+            const workoutLog = JSON.parse(localStorage.getItem('workoutLog') || '[]');
+
+            if (weightLog.length > 0) {
+                const current = weightLog[weightLog.length - 1];
+                const starting = weightLog[0];
+                const change = current.weight - starting.weight;
+
+                document.getElementById('statCurrent').textContent = `${current.weight}`;
+                document.getElementById('statStarting').textContent = `${starting.weight}`;
+                document.getElementById('statChange').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}`;
+                document.getElementById('statChange').className = `font-display text-2xl ${change <= 0 ? 'text-lime' : 'text-hot'}`;
+            }
+
+            document.getElementById('statWorkouts').textContent = workoutLog.length;
+        }
+
+        // Load history
+        function loadHistory() {
+            const weightLog = JSON.parse(localStorage.getItem('weightLog') || '[]');
+            const workoutLog = JSON.parse(localStorage.getItem('workoutLog') || '[]');
+
+            // Weight history
+            const weightHistory = document.getElementById('weightHistory');
+            if (weightLog.length > 0) {
+                weightHistory.innerHTML = weightLog.slice().reverse().map(entry => {
+                    const date = new Date(entry.date);
+                    return `
+                        <div class="flex justify-between items-center bg-dark-600 px-4 py-3 rounded-lg">
+                            <span class="text-gray-400 text-sm">${date.toLocaleDateString()}</span>
+                            <span class="font-semibold text-electric">${entry.weight} ${entry.unit}</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                weightHistory.innerHTML = '<p class="text-gray-500 text-center py-8">No weight entries yet</p>';
+            }
+
+            // Workout history
+            const workoutHistory = document.getElementById('workoutHistory');
+            if (workoutLog.length > 0) {
+                workoutHistory.innerHTML = workoutLog.slice().reverse().map(workout => {
+                    const date = new Date(workout.date);
+                    const completedSets = workout.sets.filter(s => s.completed).length;
+                    return `
+                        <div class="bg-dark-600 rounded-xl p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <div class="font-display text-lg text-white capitalize">${workout.muscle}</div>
+                                    <div class="text-sm text-gray-400">${workout.mainExercise}</div>
+                                    <div class="text-xs text-gray-500">+ ${workout.finisherExercise}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">${date.toLocaleDateString()}</div>
+                                    <div class="text-sm text-lime font-semibold">${completedSets}/5 sets</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                workoutHistory.innerHTML = '<p class="text-gray-500 text-center py-8">No workouts recorded yet</p>';
+            }
+        }
+
+        // Clear all data
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                localStorage.removeItem('weightLog');
+                localStorage.removeItem('workoutLog');
+                updateChart();
+                loadStats();
+                loadHistory();
+                document.getElementById('statCurrent').textContent = '--';
+                document.getElementById('statStarting').textContent = '--';
+                document.getElementById('statChange').textContent = '--';
+                alert('All data cleared.');
+            }
+        }
+    </script>
+</body>
+</html>
